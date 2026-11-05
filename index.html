@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CogniMate AI - Universal HK Study Assistant</title>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* DEFAULT LIGHT THEME */
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --secondary: #0891b2;
+      --bg-dark: #f8fafc;
+      --card-bg: #ffffff;
+      --text-light: #0f172a;
+      --text-muted: #64748b;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --border-color: #cbd5e1;
+    }
+
+    /* Dark Theme Override */
+    body.dark-theme {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --text-light: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+    }
+
+    /* Dynamic Color Schemes */
+    body.theme-teal { --primary: #0891b2; --primary-hover: #0e7490; --secondary: #06b6d4; }
+    body.theme-green { --primary: #059669; --primary-hover: #047857; --secondary: #10b981; }
+    body.theme-amber { --primary: #d97706; --primary-hover: #b45309; --secondary: #f59e0b; }
+    body.theme-rose { --primary: #e11d48; --primary-hover: #be123c; --secondary: #f43f5e; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-light); display: flex; height: 100vh; overflow: hidden; transition: background 0.3s, color 0.3s; }
+
+    #app-container { display: flex; width: 100vw; height: 100vh; position: relative; }
+
+    /* Collapsible Left Sidebar */
+    #sidebar {
+      width: 270px;
+      background-color: var(--card-bg);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s ease;
+      z-index: 10;
+    }
+
+    #sidebar.collapsed { width: 75px; }
+
+    .sidebar-header {
+      padding: 20px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .brand-logo { display: flex; align-items: center; gap: 12px; font-weight: bold; font-size: 1.2rem; color: var(--primary); }
+    .sidebar-toggle-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; }
+
+    .nav-menu { list-style: none; padding: 10px 0; flex-grow: 1; overflow-y: auto; }
+    .nav-item {
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+      font-size: 0.95rem;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      background-color: rgba(79, 70, 229, 0.1);
+      color: var(--primary);
+      border-left: 4px solid var(--primary);
+      font-weight: 600;
+    }
+
+    .nav-item i { font-size: 1.2rem; width: 24px; text-align: center; }
+    #sidebar.collapsed .nav-text { display: none; }
+
+    .user-profile-widget {
+      padding: 15px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background-color: rgba(0,0,0,0.02);
+    }
+
+    .user-avatar {
+      width: 42px; height: 42px; border-radius: 50%;
+      background-color: var(--primary); display: flex;
+      align-items: center; justify-content: center; font-weight: bold; color: white;
+    }
+
+    .user-info { flex-grow: 1; overflow: hidden; }
+    .user-name { font-size: 0.9rem; font-weight: bold; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+    .user-grade { font-size: 0.75rem; color: var(--text-muted); }
+    #sidebar.collapsed .user-info { display: none; }
+
+    /* Main Content Area */
+    #main-content {
+      flex-grow: 1;
+      background-color: var(--bg-dark);
+      overflow-y: auto;
+      padding: 25px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .card-title {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--primary);
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+    .btn {
+      padding: 8px 16px; border-radius: 6px; border: none;
+      cursor: pointer; font-weight: 600; transition: background 0.2s, transform 0.1s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background-color: var(--primary); color: white; }
+    .btn-primary:hover { background-color: var(--primary-hover); }
+    .btn-secondary { background-color: var(--border-color); color: var(--text-light); }
+    .btn-danger { background-color: var(--accent-red); color: white; }
+    .btn-success { background-color: var(--accent-green); color: white; }
+
+    input, select, textarea {
+      width: 100%; padding: 10px; border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-dark); color: var(--text-light);
+      margin-top: 5px; margin-bottom: 15px;
+    }
+
+    /* Timetable Grid */
+    .timetable-wrapper { overflow-x: auto; max-height: 550px; overflow-y: auto; }
+    .timetable-grid {
+      display: grid;
+      grid-template-columns: 80px repeat(7, minmax(130px, 1fr));
+      gap: 2px;
+      background-color: var(--border-color);
+      border-radius: 8px;
+    }
+
+    .time-header {
+      background-color: rgba(79, 70, 229, 0.15);
+      color: var(--primary);
+      padding: 8px; text-align: center; font-weight: bold; font-size: 0.85rem;
+      position: sticky; top: 0; z-index: 5;
+    }
+
+    .time-cell { background-color: var(--card-bg); padding: 8px; text-align: center; font-size: 0.75rem; color: var(--text-muted); }
+    .time-slot { background-color: var(--card-bg); min-height: 50px; padding: 4px; font-size: 0.75rem; border: 1px solid rgba(0,0,0,0.02); }
+
+    .schedule-task {
+      padding: 4px 6px; border-radius: 4px; margin-bottom: 4px;
+      display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;
+    }
+    .task-study { background-color: var(--primary); color: white; }
+    .task-training { background-color: #f59e0b; color: black; font-weight: 600; }
+    .task-school { background-color: #94a3b8; color: white; }
+
+    /* Modals */
+    .modal {
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background-color: var(--card-bg); padding: 25px; border-radius: 12px;
+      width: 550px; max-width: 92%; max-height: 90vh; overflow-y: auto;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    /* Chat Area */
+    .chat-box {
+      height: 400px; overflow-y: auto; border: 1px solid var(--border-color);
+      padding: 15px; border-radius: 8px; background-color: var(--bg-dark);
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .chat-msg { padding: 12px 16px; border-radius: 8px; max-width: 80%; font-size: 0.9rem; line-height: 1.4; }
+    .chat-msg.user { background-color: var(--primary); color: white; align-self: flex-end; }
+    .chat-msg.bot { background-color: var(--card-bg); border: 1px solid var(--border-color); align-self: flex-start; color: var(--text-light); }
+
+    .tab-group { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+    .tab-btn { padding: 8px 16px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-weight: bold; }
+    .tab-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+
+    /* Quiz Option Styling */
+    .quiz-opt {
+      padding: 12px; border: 1px solid var(--border-color); border-radius: 8px;
+      margin-bottom: 10px; cursor: pointer; transition: all 0.2s; font-weight: 500;
+    }
+    .quiz-opt:hover { border-color: var(--primary); background: rgba(79, 70, 229, 0.05); }
+    .quiz-opt.selected { border-color: var(--primary); background: rgba(79, 70, 229, 0.1); }
+    .quiz-opt.correct { border-color: var(--accent-green); background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+    .quiz-opt.incorrect { border-color: var(--accent-red); background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+
+    /* Module Card Styling */
+    .edb-module-card {
+      border: 1px solid var(--border-color); border-radius: 10px; padding: 16px;
+      background-color: var(--card-bg); transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .edb-module-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
+    .badge-edb { background-color: rgba(8, 145, 178, 0.15); color: var(--secondary); }
+
+    /* Pulse animation for recording */
+    .recording-pulse {
+      width: 12px; height: 12px; border-radius: 50%; background-color: var(--accent-red);
+      display: inline-block; animation: pulse-red 1.5s infinite;
+    }
+    @keyframes pulse-red {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app-container">
+
+  <!-- Left Sidebar -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-logo">
+        <i class="fa-solid fa-brain"></i>
+        <span class="nav-text">CogniMate AI</span>
+      </div>
+      <button class="sidebar-toggle-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+    </div>
+
+    <ul class="nav-menu">
+      <li class="nav-item active" onclick="switchSection('planner-section', this)">
+        <i class="fa-solid fa-calendar-days"></i>
+        <span class="nav-text">Master Timetable</span>
+      </li>
+      <li class="nav-item" onclick="switchSection('edb-section', this)">
+        <i class="fa-solid fa-book-bookmark"></i>
+        <span class="nav-text">EDB Curriculum Hub</span>
+      </li>
+      <li class="nav-item" onclick="switchSection('quiz-section', this)">
+        <i class="fa-solid fa-circle-question"></i>
+        <span class="nav-text">Adaptive AI Quizzes</span>
+      </li>
+      <li class="nav-item" onclick="switchSection('recorder-section', this)">
+        <i class="fa-solid fa-microphone-lines"></i>
+        <span class="nav-text">Lecture Summarizer</span>
+      </li>
+      <li class="nav-item" onclick="switchSection('chat-section', this)">
+        <i class="fa-solid fa-robot"></i>
+        <span class="nav-text">Smart AI Tutor</span>
+      </li>
+      <li class="nav-item" onclick="switchSection('practice-section', this)">
+        <i class="fa-solid fa-file-pen"></i>
+        <span class="nav-text">Mock Exam Vault</span>
+      </li>
+      <li class="nav-item" onclick="switchSection('videos-section', this)">
+        <i class="fa-solid fa-circle-play"></i>
+        <span class="nav-text">Syllabus Video Hub</span>
+      </li>
+      <li class="nav-item" onclick="switchSection('weakness-section', this)">
+        <i class="fa-solid fa-chart-line"></i>
+        <span class="nav-text">Weakness Analysis</span>
+      </li>
+      <li class="nav-item" onclick="switchSection('settings-section', this)">
+        <i class="fa-solid fa-sliders"></i>
+        <span class="nav-text">Settings & Theme</span>
+      </li>
+    </ul>
+
+    <div class="user-profile-widget">
+      <div class="user-avatar" id="avatar-initials">U</div>
+      <div class="user-info">
+        <div class="user-name" id="display-user-name">Student</div>
+        <div class="user-grade" id="display-user-grade">Grade: Unset</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div id="main-content">
+
+    <!-- Focus Audio Synth & Spotify Header -->
+    <div class="card" style="margin-bottom:0;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-weight:bold; color:var(--primary);"><i class="fa-solid fa-headphones"></i> Focus Soundscapes & Music Widget</span>
+        <span style="font-size:0.8rem; color:var(--accent-green); font-weight:bold;"><i class="fa-solid fa-fire"></i> Study Streak: <span id="streak-counter">0</span> Days</span>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="toggleSynthAudio()"><i class="fa-solid fa-play" id="audio-play-icon"></i> Focus Ambient</button>
+        <select id="synth-sound-select" onchange="changeSynthSound()" style="width:180px; margin:0;">
+          <option value="binaural">Deep Focus (40Hz Gamma)</option>
+          <option value="lofi">Lo-Fi Study Beats</option>
+          <option value="rain">Study Rain Ambient</option>
+        </select>
+        <button class="btn btn-secondary" onclick="toggleSpotifyWidget()"><i class="fa-brands fa-spotify"></i> Toggle Spotify Player</button>
+      </div>
+
+      <div id="spotify-embed-container" style="display:none; margin-top:12px;">
+        <iframe src="https://open.spotify.com/embed/playlist/37i9dQZF1DX8NTLI29BXZa" width="100%" height="152" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
+      </div>
+    </div>
+
+    <!-- 1. MASTER DYNAMIC TIMETABLE -->
+    <div id="planner-section" class="page-section active">
+      <div class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-calendar-check"></i> Master Weekly Schedule (24-Hour Grid)</span>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" onclick="openPresetModal()"><i class="fa-solid fa-clock"></i> Routine Settings</button>
+            <button class="btn btn-secondary" onclick="openTrainingModal()"><i class="fa-solid fa-dumbbell"></i> Add Training / Class</button>
+            <button class="btn btn-primary" onclick="openExamModal()"><i class="fa-solid fa-plus"></i> Add Exam & Syllabus</button>
+          </div>
+        </div>
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:15px;">
+          Calculates precise study quotas based on your exam dates. Schedules are editable by exact hours and minutes!
+        </p>
+
+        <div class="timetable-wrapper">
+          <div class="timetable-grid" id="timetable-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. EDB CURRICULUM MODULES HUB -->
+    <div id="edb-section" class="page-section">
+      <div class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-book-bookmark"></i> Hong Kong EDB Official Curriculum Modules</span>
+          <span class="badge badge-edb"><i class="fa-solid fa-building-columns"></i> EDB Standardized</span>
+        </div>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">
+          Aligned with official Education Bureau (EDB) syllabi for Secondary and Primary streams in Hong Kong.
+        </p>
+
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+          <select id="edb-subject-filter" onchange="renderEDBModules()" style="margin:0; max-width:250px;">
+            <option value="all">All Enrolled Subjects</option>
+          </select>
+        </div>
+
+        <div class="grid-3" id="edb-modules-grid"></div>
+      </div>
+    </div>
+
+    <!-- 3. ADAPTIVE AI QUIZZES -->
+    <div id="quiz-section" class="page-section">
+      <div class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-circle-question"></i> Dynamic Adaptive Quiz Engine</span>
+          <span style="font-size:0.85rem; color:var(--primary); font-weight:bold;" id="quiz-difficulty-badge">Difficulty: Medium</span>
+        </div>
+        
+        <div id="quiz-setup-box">
+          <div class="grid-2">
+            <div>
+              <label>Select Subject for Quiz</label>
+              <select id="quiz-subject-select"></select>
+            </div>
+            <div>
+              <label>Target Level</label>
+              <select id="quiz-mode-select">
+                <option value="adaptive">Adaptive Auto-Adjust (Recommended)</option>
+                <option value="dse-hard">HKDSE Level 5** Challenge</option>
+                <option value="quick">Quick 3-Question Warmup</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="startAdaptiveQuiz()"><i class="fa-solid fa-play"></i> Start Adaptive Quiz</button>
+        </div>
+
+        <div id="quiz-active-box" style="display:none; margin-top:15px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="font-weight:bold;" id="quiz-q-num">Question 1 of 3</span>
+            <span style="font-size:0.85rem; color:var(--accent-green);" id="quiz-score-tracker">Score: 0</span>
+          </div>
+          <div style="font-size:1.05rem; font-weight:600; margin-bottom:15px;" id="quiz-question-text">Loading question...</div>
+          <div id="quiz-options-container"></div>
+          
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
+            <span id="quiz-feedback-text" style="font-size:0.9rem; font-weight:bold;"></span>
+            <button class="btn btn-primary" id="quiz-next-btn" style="display:none;" onclick="nextQuizQuestion()">Next Question <i class="fa-solid fa-arrow-right"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. LECTURE RECORDER & AI NOTES SUMMARIZER -->
+    <div id="recorder-section" class="page-section">
+      <div class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-microphone-lines"></i> Live Lecture Recorder & AI Summarizer</span>
+          <span id="recording-status-tag" style="font-size:0.85rem; color:var(--text-muted);"><i class="fa-solid fa-circle-stop"></i> Ready</span>
+        </div>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">
+          Record school lectures or class audio in real-time. CogniMate will transcribe, summarize key points, and generate flashcards automatically!
+        </p>
+
+        <div style="display:flex; gap:12px; align-items:center; margin-bottom:15px;">
+          <button class="btn btn-danger" id="record-toggle-btn" onclick="toggleAudioRecording()"><i class="fa-solid fa-microphone"></i> Start Recording</button>
+          <span id="recording-timer" style="font-weight:bold; font-family:monospace; font-size:1.1rem;">00:00</span>
+          <span id="recording-indicator" style="display:none;"><span class="recording-pulse"></span> Recording Audio...</span>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <h4>Live Audio Transcript</h4>
+            <textarea id="lecture-transcript" style="height:220px; font-size:0.85rem;" placeholder="Audio transcript will appear here during live recording or when pasted..."></textarea>
+            <button class="btn btn-secondary" onclick="generateLectureSummary()"><i class="fa-solid fa-wand-magic-sparkles"></i> Summarize Transcript</button>
+          </div>
+          <div>
+            <h4>AI Structural Summary & Key Takeaways</h4>
+            <div id="lecture-summary-output" style="height:220px; border:1px solid var(--border-color); border-radius:6px; padding:12px; overflow-y:auto; background:var(--bg-dark); font-size:0.85rem; line-height:1.5;">
+              <p style="color:var(--text-muted);">Summary takeaways and automatically generated revision flashcards will populate here.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. SMART SOCRATIC AI TUTOR -->
+    <div id="chat-section" class="page-section">
+      <div class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-robot"></i> Smart Gemini-Style Study Buddy</span>
+          <span style="font-size:0.8rem; color:var(--accent-green); font-weight:bold;"><i class="fa-solid fa-lock"></i> EDB Approved Sources</span>
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:0.85rem;">Select Subject Context:</label>
+          <select id="chat-subject-select" style="margin-bottom:5px;"></select>
+        </div>
+        <div class="chat-box" id="chat-box">
+          <div class="chat-msg bot">
+            Hi! I'm your CogniMate study buddy. What would you like to work on today? Ask me any questions, or upload study notes/past papers below!
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:10px; align-items:center;">
+          <label class="btn btn-secondary" style="margin:0; cursor:pointer;" title="Upload notes or images">
+            <i class="fa-solid fa-paperclip"></i> <input type="file" id="chat-file-input" style="display:none;" onchange="handleFileUpload(event)">
+          </label>
+          <input type="text" id="chat-input" placeholder="Ask a question or request a study topic..." style="margin:0;" onkeypress="handleKeyPress(event)">
+          <button class="btn btn-primary" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+        <span id="file-attached-label" style="font-size:0.75rem; color:var(--primary); margin-top:4px; display:block;"></span>
+      </div>
+    </div>
+
+    <!-- 6. MOCK EXAM VAULT (AI vs ONLINE) -->
+    <div id="practice-section" class="page-section">
+      <div class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-file-pen"></i> Grade-Curated Mock Exam Vault</span>
+          <span style="font-size:0.85rem; color:var(--primary); font-weight:bold;" id="mock-grade-indicator">Grade: Unset</span>
+        </div>
+        <div class="tab-group">
+          <button class="tab-btn active" onclick="switchMockTab('ai-mocks')">Made with AI</button>
+          <button class="tab-btn" onclick="switchMockTab('online-mocks')">Online Reliable Sources (EDB / Scribd)</button>
+        </div>
+
+        <div id="ai-mocks" class="mock-tab-content">
+          <div class="grid-2" id="ai-mocks-container"></div>
+        </div>
+
+        <div id="online-mocks" class="mock-tab-content" style="display:none;">
+          <div class="grid-2" id="online-mocks-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. TOPIC VIDEO HUB -->
+    <div id="videos-section" class="page-section">
+      <div class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-circle-play"></i> Syllabus-Targeted Video Hub</span>
+        </div>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Curated Hong Kong syllabus lessons matched directly to your grade subjects.</p>
+        <div class="grid-2" id="video-cards-grid"></div>
+      </div>
+    </div>
+
+    <!-- 8. WEAKNESS ANALYSIS -->
+    <div id="weakness-section" class="page-section">
+      <div class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-chart-pie"></i> Subject Mastery & Weakness Analysis</span>
+        </div>
+        <div class="grid-2">
+          <div style="min-height:300px;">
+            <canvas id="weaknessChart"></canvas>
+          </div>
+          <div>
+            <h4 style="margin-bottom:10px;">Subject Diagnostics</h4>
+            <div id="weakness-subject-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9. SETTINGS & CUSTOMIZATION -->
+    <div id="settings-section" class="page-section">
+      <div class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-sliders"></i> Settings & Theme Customizer</span>
+        </div>
+        <div class="grid-2">
+          <div>
+            <h3>Profile & Specific Grade</h3>
+            <label>Name</label>
+            <input type="text" id="input-profile-name">
+            
+            <label>Exact HK Grade Level</label>
+            <select id="input-profile-grade">
+              <optgroup label="Primary School">
+                <option value="Primary 1 (P1)">Primary 1 (P1)</option>
+                <option value="Primary 2 (P2)">Primary 2 (P2)</option>
+                <option value="Primary 3 (P3)">Primary 3 (P3)</option>
+                <option value="Primary 4 (P4)">Primary 4 (P4)</option>
+                <option value="Primary 5 (P5)">Primary 5 (P5)</option>
+                <option value="Primary 6 (P6)">Primary 6 (P6)</option>
+              </optgroup>
+              <optgroup label="Junior Secondary">
+                <option value="Secondary 1 (S1)">Secondary 1 (S1)</option>
+                <option value="Secondary 2 (S2)">Secondary 2 (S2)</option>
+                <option value="Secondary 3 (S3)">Secondary 3 (S3)</option>
+              </optgroup>
+              <optgroup label="Senior Secondary (HKDSE)">
+                <option value="Secondary 4 (S4 HKDSE)">Secondary 4 (S4 HKDSE)</option>
+                <option value="Secondary 5 (S5 HKDSE)">Secondary 5 (S5 HKDSE)</option>
+                <option value="Secondary 6 (S6 HKDSE)">Secondary 6 (S6 HKDSE)</option>
+              </optgroup>
+              <optgroup label="International Stream">
+                <option value="IGCSE Year 10-11">IGCSE Year 10-11</option>
+                <option value="IB Diploma (DP1-DP2)">IB Diploma (DP1-DP2)</option>
+              </optgroup>
+            </select>
+            <button class="btn btn-primary" onclick="saveProfileChanges()">Save Profile</button>
+          </div>
+
+          <div>
+            <h3>Theme & Appearance</h3>
+            <label>Mode</label>
+            <select id="theme-mode-select" onchange="applyThemeSettings()">
+              <option value="light">Light Mode (Default)</option>
+              <option value="dark">Dark Mode</option>
+            </select>
+
+            <label>Accent Color Palette</label>
+            <select id="theme-color-select" onchange="applyThemeSettings()">
+              <option value="indigo">Indigo Purple (Default)</option>
+              <option value="teal">Cyan Teal</option>
+              <option value="green">Emerald Green</option>
+              <option value="amber">Sunset Amber</option>
+              <option value="rose">Rose Red</option>
+            </select>
+
+            <hr style="border-color:var(--border-color); margin:15px 0;">
+            <h3>Google School Account Sync</h3>
+            <div style="margin-bottom:10px;">
+              <input type="email" id="google-email-input" placeholder="Enter any HK school email (e.g. name@school.edu.hk)" style="margin-bottom:8px;">
+              <button class="btn btn-success" style="width:100%;" onclick="connectUniversalGoogleAccount()"><i class="fa-brands fa-google"></i> Connect Google School Account</button>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-muted);">Status: <strong id="google-account-status">Not Connected</strong></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ONBOARDING PRESETTINGS MODAL -->
+<div class="modal active" id="onboarding-modal">
+  <div class="modal-content">
+    <h2 style="color:var(--primary); margin-bottom:10px;"><i class="fa-solid fa-brain"></i> CogniMate HK Presettings</h2>
+    <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Configure your exact grade and subjects for targeted HK study plans.</p>
+
+    <div style="background:rgba(79, 70, 229, 0.05); padding:12px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:15px;">
+      <label style="font-weight:bold; font-size:0.85rem;">Sign in with Google School Account (Optional)</label>
+      <input type="email" id="onboarding-google-email" placeholder="e.g. student@school.edu.hk" style="margin-bottom:8px;">
+      <button class="btn btn-success" style="width:100%;" onclick="connectOnboardingGoogle()"><i class="fa-brands fa-google"></i> Connect School Email</button>
+    </div>
+
+    <label>Your Name</label>
+    <input type="text" id="setup-name" placeholder="e.g. Alex Wong">
+
+    <label>Select Your Exact Hong Kong Grade Level</label>
+    <select id="setup-grade">
+      <optgroup label="Primary School">
+        <option value="Primary 1 (P1)">Primary 1 (P1)</option>
+        <option value="Primary 2 (P2)">Primary 2 (P2)</option>
+        <option value="Primary 3 (P3)">Primary 3 (P3)</option>
+        <option value="Primary 4 (P4)">Primary 4 (P4)</option>
+        <option value="Primary 5 (P5)">Primary 5 (P5)</option>
+        <option value="Primary 6 (P6)">Primary 6 (P6)</option>
+      </optgroup>
+      <optgroup label="Junior Secondary">
+        <option value="Secondary 1 (S1)">Secondary 1 (S1)</option>
+        <option value="Secondary 2 (S2)">Secondary 2 (S2)</option>
+        <option value="Secondary 3 (S3)" selected>Secondary 3 (S3)</option>
+      </optgroup>
+      <optgroup label="Senior Secondary (HKDSE)">
+        <option value="Secondary 4 (S4 HKDSE)">Secondary 4 (S4 HKDSE)</option>
+        <option value="Secondary 5 (S5 HKDSE)">Secondary 5 (S5 HKDSE)</option>
+        <option value="Secondary 6 (S6 HKDSE)">Secondary 6 (S6 HKDSE)</option>
+      </optgroup>
+    </select>
+
+    <label>Select Your Enrolled Subjects This Year:</label>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:15px;" id="subject-checkboxes">
+      <label><input type="checkbox" value="Mathematics" checked> Mathematics</label>
+      <label><input type="checkbox" value="English Language" checked> English Language</label>
+      <label><input type="checkbox" value="Chinese Language" checked> Chinese Language (中文)</label>
+      <label><input type="checkbox" value="中國歷史" checked> 中國歷史 (Chinese History)</label>
+      <label><input type="checkbox" value="Integrated Science" checked> Integrated Science</label>
+      <label><input type="checkbox" value="Physics"> Physics</label>
+      <label><input type="checkbox" value="Chemistry"> Chemistry</label>
+      <label><input type="checkbox" value="Biology"> Biology</label>
+      <label><input type="checkbox" value="History"> World History</label>
+      <label><input type="checkbox" value="Geography"> Geography (地理)</label>
+      <label><input type="checkbox" value="Economics"> Economics (經濟)</label>
+      <label><input type="checkbox" value="Mandarin"> Mandarin (普通話)</label>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;" onclick="completeOnboarding()">Launch Customized Workspace</button>
+  </div>
+</div>
+
+<!-- TIME PRESETTINGS MODAL -->
+<div class="modal" id="preset-modal">
+  <div class="modal-content">
+    <h3>Edit Routine Times</h3>
+    <label>School Start Time</label>
+    <input type="time" id="preset-school-start" value="08:00">
+    <label>School End Time</label>
+    <input type="time" id="preset-school-end" value="15:30">
+
+    <label>Bedtime / Sleep Time</label>
+    <input type="time" id="preset-sleep-start" value="23:00">
+
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-secondary" onclick="closeModal('preset-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePresets()">Save Routine</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRAINING / TUITION TIME MODAL -->
+<div class="modal" id="training-modal">
+  <div class="modal-content">
+    <h3>Add Training / Tuition Schedule</h3>
+    <label>Activity Name</label>
+    <input type="text" id="train-title" placeholder="e.g., Football Practice / Math Tuition">
+
+    <label>Day of Week</label>
+    <select id="train-day">
+      <option value="1">Monday</option>
+      <option value="2">Tuesday</option>
+      <option value="3">Wednesday</option>
+      <option value="4">Thursday</option>
+      <option value="5">Friday</option>
+      <option value="6">Saturday</option>
+      <option value="7">Sunday</option>
+    </select>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <div>
+        <label>Start Time</label>
+        <input type="time" id="train-start-time" value="16:00">
+      </div>
+      <div>
+        <label>End Time</label>
+        <input type="time" id="train-end-time" value="18:00">
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-secondary" onclick="closeModal('training-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTrainingSlot()">Save Activity</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXAM SETUP MODAL -->
+<div class="modal" id="exam-modal">
+  <div class="modal-content">
+    <h3>Add Exam & Study Quota</h3>
+    <label>Subject</label>
+    <select id="exam-subject-select"></select>
+
+    <label>Textbook / Book Title</label>
+    <input type="text" id="exam-book" placeholder="e.g. Science Book 3B">
+
+    <label>Syllabus Topics</label>
+    <textarea id="exam-syllabus" placeholder="e.g. Chapter 5 Electricity, Circuit Diagrams"></textarea>
+
+    <label>Total Pages to Study</label>
+    <input type="number" id="exam-pages" value="60">
+
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-secondary" onclick="closeModal('exam-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveExamAndGeneratePlan()">Generate Study Plan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let userData = {
+    name: "Student",
+    grade: "Secondary 3 (S3)",
+    subjects: ["Mathematics", "English Language", "Chinese Language", "中國歷史", "Integrated Science"],
+    streak: 0,
+    schoolStart: "08:00",
+    schoolEnd: "15:30",
+    sleepStart: "23:00",
+    themeMode: "light",
+    themeColor: "indigo",
+    googleUser: null
+  };
+
+  let exams = [];
+  let scheduleTasks = [];
+  let uploadedFileContent = "";
+  let audioCtx = null, oscillator = null, gainNode = null, isAudioPlaying = false;
+
+  /* Recorder state */
+  let isRecording = false, recordTimerInterval = null, recordSeconds = 0;
+
+  /* Quiz state */
+  let quizData = [], currentQuizIndex = 0, currentScore = 0, selectedOptionIndex = null;
+
+  window.onload = function() {
+    let saved = localStorage.getItem('cognimate_universal_data');
+    if(saved) {
+      userData = JSON.parse(saved);
+      document.getElementById('onboarding-modal').classList.remove('active');
+      initApp();
+    }
+  };
+
+  function connectOnboardingGoogle() {
+    let email = document.getElementById('onboarding-google-email').value;
+    if(email) {
+      userData.googleUser = email;
+      alert(`Connected Google Account: ${email}`);
+    }
+  }
+
+  function connectUniversalGoogleAccount() {
+    let email = document.getElementById('google-email-input').value;
+    if(email) {
+      userData.googleUser = email;
+      document.getElementById('google-account-status').innerText = `Connected (${email})`;
+      saveData();
+      alert(`Successfully linked Google School Account: ${email}`);
+    } else {
+      alert("Please enter a valid school email address.");
+    }
+  }
+
+  function completeOnboarding() {
+    let name = document.getElementById('setup-name').value;
+    if(name) userData.name = name;
+    userData.grade = document.getElementById('setup-grade').value;
+
+    let checked = [];
+    document.querySelectorAll('#subject-checkboxes input:checked').forEach(cb => checked.push(cb.value));
+    if(checked.length > 0) userData.subjects = checked;
+
+    saveData();
+    document.getElementById('onboarding-modal').classList.remove('active');
+    initApp();
+  }
+
+  function initApp() {
+    document.getElementById('display-user-name').innerText = userData.name;
+    document.getElementById('display-user-grade').innerText = userData.grade;
+    document.getElementById('mock-grade-indicator').innerText = `Curated for: ${userData.grade}`;
+    document.getElementById('streak-counter').innerText = userData.streak;
+    document.getElementById('input-profile-name').value = userData.name;
+    document.getElementById('input-profile-grade').value = userData.grade;
+    if(userData.googleUser) {
+      document.getElementById('google-account-status').innerText = `Connected (${userData.googleUser})`;
+      document.getElementById('google-email-input').value = userData.googleUser;
+    }
+
+    applyThemeSettings();
+    populateSubjectDropdowns();
+    renderTimetable();
+    renderEDBModules();
+    renderMockVault();
+    renderVideoHub();
+    renderWeaknessChart();
+  }
+
+  function saveData() {
+    localStorage.setItem('cognimate_universal_data', JSON.stringify(userData));
+  }
+
+  /* Theme Customizer */
+  function applyThemeSettings() {
+    userData.themeMode = document.getElementById('theme-mode-select').value || userData.themeMode;
+    userData.themeColor = document.getElementById('theme-color-select').value || userData.themeColor;
+
+    document.body.className = '';
+    if(userData.themeMode === 'dark') document.body.classList.add('dark-theme');
+    document.body.classList.add(`theme-${userData.themeColor}`);
+
+    saveData();
+  }
+
+  function populateSubjectDropdowns() {
+    let chatSel = document.getElementById('chat-subject-select');
+    let examSel = document.getElementById('exam-subject-select');
+    let quizSel = document.getElementById('quiz-subject-select');
+    let edbFilter = document.getElementById('edb-subject-filter');
+
+    chatSel.innerHTML = ''; examSel.innerHTML = ''; quizSel.innerHTML = '';
+    edbFilter.innerHTML = '<option value="all">All Enrolled Subjects</option>';
+
+    userData.subjects.forEach(sub => {
+      chatSel.innerHTML += `<option value="${sub}">${sub}</option>`;
+      examSel.innerHTML += `<option value="${sub}">${sub}</option>`;
+      quizSel.innerHTML += `<option value="${sub}">${sub}</option>`;
+      edbFilter.innerHTML += `<option value="${sub}">${sub}</option>`;
+    });
+  }
+
+  /* EDB Modules Engine */
+  function renderEDBModules() {
+    let grid = document.getElementById('edb-modules-grid');
+    grid.innerHTML = '';
+    let filter = document.getElementById('edb-subject-filter').value;
+
+    let sampleModules = [
+      { sub: "Mathematics", title: "Algebraic Relations & Quadratic Curves", code: "MATH-S3-M1", desc: "EDB Curriculum Unit 3.1: Expansion, factorization, and quadratic functions." },
+      { sub: "Integrated Science", title: "Electricity & Magnetism", code: "SCI-S3-PHYS", desc: "EDB Curriculum Unit 7.2: Series/parallel circuits, Ohm's Law, and domestic electricity safety." },
+      { sub: "English Language", title: "Argumentative Writing & Formal Debating", code: "ENG-S3-WRIT", desc: "EDB Elective Module: Structuring thesis statements and rebuttals." },
+      { sub: "中國歷史", title: "明清兩代的集權統治與對外關係", code: "CHIST-S3-M4", desc: "EDB 課程單元四：內閣制度、閉關政策與鴉片戰爭前夕發展。" },
+      { sub: "Chinese Language", title: "文言文閱讀理解與常用虛字", code: "CHIN-S3-READ", desc: "EDB 指定文言篇章精選與語文基礎知識。" },
+      { sub: "Physics", title: "Kinematics & Newton's Laws of Motion", code: "PHYS-S4-M1", desc: "EDB Core Module: Displacement, velocity-time graphs, and net forces." }
+    ];
+
+    let filtered = filter === 'all' ? sampleModules : sampleModules.filter(m => m.sub === filter);
+
+    if(filtered.length === 0) {
+      grid.innerHTML = `<p style="color:var(--text-muted); grid-column:span 3;">No specific EDB modules found for this filter. Check your subject selection!</p>`;
+      return;
+    }
+
+    filtered.forEach(mod => {
+      grid.innerHTML += `
+        <div class="edb-module-card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+            <span class="badge badge-edb">${mod.code}</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">${mod.sub}</span>
+          </div>
+          <h4 style="margin-bottom:6px; color:var(--primary);">${mod.title}</h4>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">${mod.desc}</p>
+          <button class="btn btn-secondary" style="font-size:0.75rem; width:100%;" onclick="openEDBModule('${mod.title}')"><i class="fa-solid fa-folder-open"></i> Explore EDB Syllabus Unit</button>
+        </div>
+      `;
+    });
+  }
+
+  function openEDBModule(title) {
+    alert(`Loading EDB Syllabus Notes & AI Practice set for: ${title}`);
+    switchSection('chat-section');
+  }
+
+  /* Adaptive Quiz Engine */
+  function startAdaptiveQuiz() {
+    let sub = document.getElementById('quiz-subject-select').value;
+    document.getElementById('quiz-setup-box').style.display = 'none';
+    document.getElementById('quiz-active-box').style.display = 'block';
+
+    currentQuizIndex = 0;
+    currentScore = 0;
+
+    quizData = [
+      {
+        q: `[${sub}] Question 1: What is the primary characteristic of this core EDB topic in ${userData.grade}?`,
+        opts: ["Option A: Standard fundamental concept", "Option B: Secondary derivation property", "Option C: Non-standard application", "Option D: Out-of-syllabus extension"],
+        ans: 0,
+        exp: "Option A is correct according to the standard EDB syllabus guideline."
+      },
+      {
+        q: `[${sub}] Question 2: In a typical examination problem, how is this rule applied?`,
+        opts: ["Option A: Directly substitute values", "Option B: Rearrange the formula first", "Option C: Plot on a Cartesian graph", "Option D: Ignore boundary conditions"],
+        ans: 1,
+        exp: "Option B is correct: Formula rearrangement is crucial before solving step-by-step."
+      },
+      {
+        q: `[${sub}] Question 3: Which error is most commonly made by students in ${userData.grade}?`,
+        opts: ["Option A: Incorrect sign during transposition", "Option B: Using the wrong calculator mode", "Option C: Writing illegible handwriting", "Option D: Misreading the unit dimensions"],
+        ans: 0,
+        exp: "Sign errors during algebraic transposition account for over 40% of marks lost."
+      }
+    ];
+
+    renderQuizQuestion();
+  }
+
+  function renderQuizQuestion() {
+    let q = quizData[currentQuizIndex];
+    document.getElementById('quiz-q-num').innerText = `Question ${currentQuizIndex + 1} of ${quizData.length}`;
+    document.getElementById('quiz-score-tracker').innerText = `Score: ${currentScore}`;
+    document.getElementById('quiz-question-text').innerText = q.q;
+    document.getElementById('quiz-feedback-text').innerText = '';
+    document.getElementById('quiz-next-btn').style.display = 'none';
+
+    let container = document.getElementById('quiz-options-container');
+    container.innerHTML = '';
+    selectedOptionIndex = null;
+
+    q.opts.forEach((opt, idx) => {
+      container.innerHTML += `
+        <div class="quiz-opt" id="q-opt-${idx}" onclick="selectQuizOption(${idx})">
+          ${opt}
+        </div>
+      `;
+    });
+  }
+
+  function selectQuizOption(idx) {
+    if(selectedOptionIndex !== null) return;
+    selectedOptionIndex = idx;
+
+    let q = quizData[currentQuizIndex];
+    let optEl = document.getElementById(`q-opt-${idx}`);
+    let feedback = document.getElementById('quiz-feedback-text');
+
+    if(idx === q.ans) {
+      optEl.classList.add('correct');
+      currentScore += 10;
+      feedback.style.color = 'var(--accent-green)';
+      feedback.innerText = `Correct! ${q.exp}`;
+    } else {
+      optEl.classList.add('incorrect');
+      document.getElementById(`q-opt-${q.ans}`).classList.add('correct');
+      feedback.style.color = 'var(--accent-red)';
+      feedback.innerText = `Incorrect! ${q.exp}`;
+    }
+
+    document.getElementById('quiz-score-tracker').innerText = `Score: ${currentScore}`;
+    document.getElementById('quiz-next-btn').style.display = 'inline-flex';
+  }
+
+  function nextQuizQuestion() {
+    currentQuizIndex++;
+    if(currentQuizIndex < quizData.length) {
+      renderQuizQuestion();
+    } else {
+      alert(`Quiz Complete! Final Score: ${currentScore} points.`);
+      document.getElementById('quiz-setup-box').style.display = 'block';
+      document.getElementById('quiz-active-box').style.display = 'none';
+    }
+  }
+
+  /* Audio Recorder & Summarizer Engine */
+  function toggleAudioRecording() {
+    let btn = document.getElementById('record-toggle-btn');
+    let status = document.getElementById('recording-status-tag');
+    let indicator = document.getElementById('recording-indicator');
+
+    if(!isRecording) {
+      isRecording = true;
+      btn.innerHTML = `<i class="fa-solid fa-square"></i> Stop Recording`;
+      btn.className = "btn btn-secondary";
+      status.innerHTML = `<i class="fa-solid fa-circle" style="color:var(--accent-red)"></i> Recording...`;
+      indicator.style.display = 'inline-block';
+      
+      recordSeconds = 0;
+      recordTimerInterval = setInterval(() => {
+        recordSeconds++;
+        let m = Math.floor(recordSeconds / 60).toString().padStart(2, '0');
+        let s = (recordSeconds % 60).toString().padStart(2, '0');
+        document.getElementById('recording-timer').innerText = `${m}:${s}`;
+      }, 1000);
+    } else {
+      isRecording = false;
+      clearInterval(recordTimerInterval);
+      btn.innerHTML = `<i class="fa-solid fa-microphone"></i> Start Recording`;
+      btn.className = "btn btn-danger";
+      status.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--accent-green)"></i> Audio Processed`;
+      indicator.style.display = 'none';
+
+      let sub = document.getElementById('chat-subject-select').value || 'Integrated Science';
+      document.getElementById('lecture-transcript').value = 
+        `[Transcribed Lecture Audio - ${sub}]\nTeacher: "Today we are reviewing the core mechanisms for our upcoming exam. Make sure to remember that step 1 requires balancing the equations before computing the net values..."`;
+    }
+  }
+
+  function generateLectureSummary() {
+    let text = document.getElementById('lecture-transcript').value;
+    if(!text) {
+      alert("Please record or paste lecture text first.");
+      return;
+    }
+
+    let out = document.getElementById('lecture-summary-output');
+    out.innerHTML = `
+      <h4 style="color:var(--primary); margin-bottom:6px;">Summary Bullet Points</h4>
+      <ul style="margin-left:18px; margin-bottom:12px;">
+        <li><strong>Core Concept:</strong> Balancing equations prior to net valuation.</li>
+        <li><strong>Key Warning:</strong> Commonly tested trap in exam section B.</li>
+      </ul>
+      <h4 style="color:var(--primary); margin-bottom:6px;">Generated Flashcards</h4>
+      <div style="background:var(--card-bg); padding:8px; border-radius:6px; border:1px solid var(--border-color);">
+        <strong>Q:</strong> What is step 1 before computing net values?<br>
+        <strong>A:</strong> Balance equations thoroughly.
+      </div>
+    `;
+  }
+
+  /* Timetable Engine */
+  function renderTimetable() {
+    let container = document.getElementById('timetable-container');
+    container.innerHTML = '';
+
+    const days = ['Time', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    days.forEach(d => {
+      let div = document.createElement('div');
+      div.className = 'time-header';
+      div.innerText = d;
+      container.appendChild(div);
+    });
+
+    let schoolStartHour = parseInt(userData.schoolStart.split(':')[0]);
+    let schoolEndHour = parseInt(userData.schoolEnd.split(':')[0]);
+    let sleepHour = parseInt(userData.sleepStart.split(':')[0]);
+
+    for(let h = 0; h < 24; h++) {
+      let timeStr = `${h.toString().padStart(2, '0')}:00`;
+      let label = document.createElement('div');
+      label.className = 'time-cell';
+      label.innerText = timeStr;
+      container.appendChild(label);
+
+      for(let d = 1; d <= 7; d++) {
+        let slot = document.createElement('div');
+        slot.className = 'time-slot';
+
+        if(d <= 5 && h >= schoolStartHour && h < schoolEndHour) {
+          slot.innerHTML = `<div class="schedule-task task-school">School (${userData.schoolStart}-${userData.schoolEnd})</div>`;
+        } else if(h >= sleepHour || h < 6) {
+          slot.style.opacity = '0.4';
+        }
+
+        let match = scheduleTasks.find(t => t.day === d && t.hour === h);
+        if(match) {
+          let cls = match.type === 'training' ? 'task-training' : 'task-study';
+          slot.innerHTML = `<div class="schedule-task ${cls}">${match.title}</div>`;
+        }
+
+        container.appendChild(slot);
+      }
+    }
+  }
+
+  function saveTrainingSlot() {
+    let title = document.getElementById('train-title').value;
+    let day = parseInt(document.getElementById('train-day').value);
+    let startTime = document.getElementById('train-start-time').value;
+    let hour = parseInt(startTime.split(':')[0]);
+
+    if(title) {
+      scheduleTasks.push({ day, hour, title: `${title} (${startTime})`, type: 'training' });
+      closeModal('training-modal');
+      renderTimetable();
+    }
+  }
+
+  function saveExamAndGeneratePlan() {
+    let subject = document.getElementById('exam-subject-select').value;
+    let pages = parseInt(document.getElementById('exam-pages').value) || 30;
+    let pagesPerDay = Math.ceil(pages / 5);
+
+    for(let d=1; d<=5; d++) {
+      scheduleTasks.push({ day: d, hour: 17, title: `${subject} (${pagesPerDay} pgs)`, type: 'study' });
+    }
+
+    closeModal('exam-modal');
+    renderTimetable();
+    alert(`Added exam quota: ~${pagesPerDay} pages/day allocated.`);
+  }
+
+  /* Audio Ambient Synth */
+  function toggleSynthAudio() {
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(!isAudioPlaying) {
+      oscillator = audioCtx.createOscillator();
+      gainNode = audioCtx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 40; // 40Hz Gamma Focus
+      gainNode.gain.value = 0.15;
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.start();
+      isAudioPlaying = true;
+      document.getElementById('audio-play-icon').className = 'fa-solid fa-pause';
+    } else {
+      oscillator.stop();
+      isAudioPlaying = false;
+      document.getElementById('audio-play-icon').className = 'fa-solid fa-play';
+    }
+  }
+
+  function toggleSpotifyWidget() {
+    let container = document.getElementById('spotify-embed-container');
+    container.style.display = container.style.display === 'none' ? 'block' : 'none';
+  }
+
+  /* Smart Gemini AI Tutor Logic */
+  function handleKeyPress(e) { if(e.key === 'Enter') sendMessage(); }
+
+  function handleFileUpload(e) {
+    let file = e.target.files[0];
+    if(file) {
+      document.getElementById('file-attached-label').innerText = `Attached File: ${file.name}`;
+      let reader = new FileReader();
+      reader.onload = function(evt) {
+        uploadedFileContent = evt.target.result;
+      };
+      reader.readAsText(file);
+    }
+  }
+
+  function sendMessage() {
+    let input = document.getElementById('chat-input');
+    let text = input.value.trim();
+    if(!text && !uploadedFileContent) return;
+
+    let chatBox = document.getElementById('chat-box');
+    let userMsg = document.createElement('div');
+    userMsg.className = 'chat-msg user';
+    userMsg.innerText = text;
+    chatBox.appendChild(userMsg);
+
+    input.value = '';
+
+    let currentSubject = document.getElementById('chat-subject-select').value;
+    let isChineseSubject = (currentSubject === '中國歷史' || currentSubject === 'Chinese Language' || currentSubject === 'Mandarin');
+
+    setTimeout(() => {
+      let botMsg = document.createElement('div');
+      botMsg.className = 'chat-msg bot';
+
+      let lower = text.toLowerCase();
+      if(isChineseSubject) {
+        if(lower.includes('hi') || lower.includes('hello') || lower.includes('你好')) {
+          botMsg.innerHTML = `你好 ${userData.name}！👋 很高興為你服務！今天你想複習 <strong>${currentSubject}</strong> (${userData.grade}) 的哪一個課題？我可以為你提供問答小測或總結重點！`;
+        } else {
+          botMsg.innerHTML = `<strong>蘇格拉底式引導：</strong> 讓我們一步步思考！根據 ${userData.grade} <strong>${currentSubject}</strong> 課程，你認為這個問題的核心歷史背景或語法重點是什麼？`;
+        }
+      } else {
+        if(lower.includes('hi') || lower.includes('hello') || lower.includes('work on')) {
+          botMsg.innerHTML = `Hey ${userData.name}! 👋 Great to see you! What topic in <strong>${currentSubject}</strong> for ${userData.grade} shall we cover today?`;
+        } else if(lower.includes('answer') || lower.includes('solve')) {
+          botMsg.innerHTML = `<strong>Socratic Hint:</strong> Let's break this down step-by-step! What is the first key rule or formula in your ${userData.grade} ${currentSubject} chapter for this problem?`;
+        } else {
+          botMsg.innerHTML = `Got it! Based on your <strong>${userData.grade} ${currentSubject}</strong> syllabus, here is a quick overview. Check out the Video Hub tab for direct tutorial clips!`;
+        }
+      }
+
+      chatBox.appendChild(botMsg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      uploadedFileContent = "";
+      document.getElementById('file-attached-label').innerText = "";
+    }, 700);
+  }
+
+  /* Mock Exam Vault (AI vs Online) */
+  function switchMockTab(tabId) {
+    document.querySelectorAll('.mock-tab-content').forEach(c => c.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).style.display = 'block';
+  }
+
+  function renderMockVault() {
+    let aiContainer = document.getElementById('ai-mocks-container');
+    let onlineContainer = document.getElementById('online-mocks-container');
+
+    aiContainer.innerHTML = ''; onlineContainer.innerHTML = '';
+
+    userData.subjects.forEach(sub => {
+      aiContainer.innerHTML += `
+        <div class="card" style="background:var(--card-bg);">
+          <h4>${sub} AI Mock Paper</h4>
+          <p style="font-size:0.8rem; color:var(--text-muted)">Curated specifically for ${userData.grade}</p>
+          <button class="btn btn-primary" style="margin-top:10px;" onclick="downloadMockPDF('${sub} AI Mock')"><i class="fa-solid fa-file-pdf"></i> Download AI PDF</button>
+        </div>
+      `;
+
+      onlineContainer.innerHTML += `
+        <div class="card" style="background:var(--card-bg);">
+          <h4>${sub} EDB Past Resource Paper</h4>
+          <p style="font-size:0.8rem; color:var(--text-muted)">Official HK Syllabus Archive</p>
+          <button class="btn btn-secondary" style="margin-top:10px;" onclick="downloadMockPDF('${sub} EDB Archive')"><i class="fa-solid fa-file-pdf"></i> Download Official PDF</button>
+        </div>
+      `;
+    });
+  }
+
+  function downloadMockPDF(title) {
+    let element = document.createElement('a');
+    let content = `<html><head><title>${title}</title></head><body><h2>${title}</h2><p>Target Grade: ${userData.grade}</p><hr><ol><li>Section A Question 1: Explain the core concepts...</li></ol></body></html>`;
+    let file = new Blob([content], {type: 'text/html'});
+    element.href = URL.createObjectURL(file);
+    element.download = `${title.replace(/\s+/g, '_')}_Paper.html`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  }
+
+  /* Video Hub */
+  function renderVideoHub() {
+    let container = document.getElementById('video-cards-grid');
+    container.innerHTML = '';
+
+    userData.subjects.forEach(sub => {
+      container.innerHTML += `
+        <div class="card" style="background:var(--card-bg);">
+          <h4>${sub} Video Tutorial</h4>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Targeted for ${userData.grade}</p>
+          <iframe width="100%" height="180" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" frameborder="0" allowfullscreen style="border-radius:8px;"></iframe>
+        </div>
+      `;
+    });
+  }
+
+  /* Weakness Radar */
+  function renderWeaknessChart() {
+    const ctx = document.getElementById('weaknessChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: userData.subjects,
+        datasets: [{
+          label: 'Mastery Level (%)',
+          data: userData.subjects.map(() => Math.floor(Math.random() * 30) + 65),
+          backgroundColor: 'rgba(79, 70, 229, 0.15)',
+          borderColor: '#4f46e5'
+        }]
+      },
+      options: { scales: { r: { min: 0, max: 100 } } }
+    });
+
+    let list = document.getElementById('weakness-subject-list');
+    list.innerHTML = '';
+    userData.subjects.forEach(sub => {
+      list.innerHTML += `
+        <div class="card" style="background:var(--card-bg); padding:10px; margin-bottom:8px;">
+          <strong>${sub}</strong>
+          <p style="font-size:0.8rem; color:var(--text-muted)">Diagnostic score: ~75%</p>
+        </div>
+      `;
+    });
+  }
+
+  /* UI Actions */
+  function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+  function switchSection(id, btn) {
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    if(btn) btn.classList.add('active');
+  }
+
+  function openPresetModal() { document.getElementById('preset-modal').classList.add('active'); }
+  function openTrainingModal() { document.getElementById('training-modal').classList.add('active'); }
+  function openExamModal() { document.getElementById('exam-modal').classList.add('active'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+  function savePresets() {
+    userData.schoolStart = document.getElementById('preset-school-start').value;
+    userData.schoolEnd = document.getElementById('preset-school-end').value;
+    userData.sleepStart = document.getElementById('preset-sleep-start').value;
+    saveData();
+    closeModal('preset-modal');
+    renderTimetable();
+  }
+
+  function saveProfileChanges() {
+    userData.name = document.getElementById('input-profile-name').value;
+    userData.grade = document.getElementById('input-profile-grade').value;
+    saveData();
+    initApp();
+    alert("Profile and grade updated!");
+  }
+</script>
+</body>
+</html>
